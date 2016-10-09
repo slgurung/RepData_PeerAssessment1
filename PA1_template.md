@@ -1,7 +1,7 @@
 # Reproducible Research: Peer Assessment 1
 by: Surya Gurung
 
-## Loading the project data & ggplot2 library.
+## Loading and preprocessing the data.
 
 
 ```r
@@ -21,7 +21,7 @@ if (!file.exists('activity.csv')){
 }
 
 # reading 'activity.csv'
-activityData <- read.csv('activity.csv', na.strings = 'NA')
+activityData <- read.csv('activity.csv', na.strings = 'NA', colClasses =  c('numeric', 'Date', 'numeric'))
 ```
 
 ## 1. What is mean total number of steps taken per day?
@@ -67,7 +67,7 @@ median(totalSteps$steps)
 
 ```r
 avgSteps <- aggregate(steps ~ interval, data = activityData, FUN = mean, na.rm = TRUE)
-with(avgSteps, plot(interval, steps, type = 'l', col = 'blue', xlab = '5-Minute Interval', ylab = 'Average Steps'))
+with(avgSteps, plot(interval, steps, type = 'l', col = 'blue', xlab = '5-Minute Intervals', ylab = 'Average Steps'))
 title('Average Steps taken in 5-minute Intervals')
 ```
 
@@ -108,50 +108,72 @@ sum(is.na(activityData$steps))
 ## [1] 2304
 ```
 
-**Replacing missing values ('NA') with average steps taken in corresponding interval.**
+**Replacing missing values ('NA') with average steps taken in corresponding interval and creating new  dataset:**
 
 ```r
 mergedActivityData <- merge(activityData, avgSteps, by = 'interval')
 naIndex <- which(is.na(mergedActivityData$steps.x))
 mergedActivityData[naIndex, 'steps.x'] <- mergedActivityData[naIndex, 'steps.y']
-modifiedTotalSteps <- aggregate(steps.x ~ date, data = mergedActivityData, FUN = sum)
+
+mergedActivityData <- mergedActivityData[ , c(1,2,3)]
+colnames(mergedActivityData) <- c('interval', 'steps','date')
+modifiedTotalSteps <- aggregate(steps ~ date, data = mergedActivityData, FUN = sum)
 ```
 
-**Plotting histogram of total daily steps
+**Plotting histogram of total daily steps taken:**
 
 ```r
-plot1 <- ggplot(modifiedTotalSteps, aes(x = steps.x)) 
-plot1 + geom_histogram(bins = 30, fill = factor(1:30)) + 
-     xlab('Total Daily Steps') + ylab('Frequency of Total Steps') + ggtitle('Total Daily Steps Distribution with replacing missing values')
+plot3 <- ggplot(modifiedTotalSteps, aes(x = steps)) 
+plot3 + geom_histogram(bins = 30, fill = factor(1:30)) + xlab('Total Daily Steps') + 
+ylab('Frequency of Total Steps') + ggtitle('Total Daily Steps Distribution with replacing missing values')
 ```
 
 ![](PA1_template_files/figure-html/unnamed-chunk-11-1.png)<!-- -->
 
-```r
-names(mergedActivityData)
-```
-
-```
-## [1] "interval" "steps.x"  "date"     "steps.y"
-```
-
+**Mean of daily total number of steps:**
 
 ```r
-mean(modifiedTotalSteps$steps.x)
+mean(modifiedTotalSteps$steps)
 ```
 
 ```
 ## [1] 10766.19
 ```
 
+**Median of daily total number of steps:**
+
 ```r
-median(modifiedTotalSteps$steps.x)
+median(modifiedTotalSteps$steps)
 ```
 
 ```
 ## [1] 10766.19
 ```
-
-
 
 ## 4. Are there differences in activity patterns between weekdays and weekends?
+
+**Creating new factor variable 'day' with levels 'weekday' and 'weekend'.**
+
+```r
+weekends <- c('Saturday', 'Sunday')
+mergedActivityData$day <- ifelse(weekdays(mergedActivityData$date) %in% weekends, 'weekend', 'weekday')
+mergedActivityData$day <- as.factor(mergedActivityData$day)
+```
+
+**Calculating average steps taken over weekdays and weekends.**
+
+```r
+avgStepWeekOrEnd <- aggregate(steps ~ interval + day, data = mergedActivityData, FUN = mean)
+```
+
+**Plotting time series of total daily steps taken over weekday and weekend:**
+
+```r
+ggplot(avgStepWeekOrEnd, aes(x = interval, y = steps, color = day)) +
+facet_wrap(~day, ncol = 1, nrow = 2) + geom_line() + ylab('Average steps taken') +
+    xlab('5-minute intervals') + ggtitle( label = 'Average steps taken over weekday and weekend') 
+```
+
+![](PA1_template_files/figure-html/unnamed-chunk-16-1.png)<!-- -->
+
+**The activity patterns are different during weekday and weekend. Test object is more active early time in weekday probably because of work at later time. But the object is very active all day in weekend maybe because of dayoff from the work and more time for activity all day.**
